@@ -8,6 +8,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	// "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	repo "github.com/yellhtet-ux/todo-golang-api-proj/internal/adapters/postgresql/sqlc"
+	"github.com/yellhtet-ux/todo-golang-api-proj/internal/todos/handler"
+	todosService "github.com/yellhtet-ux/todo-golang-api-proj/internal/todos/service"
 )
 
 
@@ -29,6 +35,21 @@ func (app *application) mount () http.Handler {
 		w.Write([]byte("ALL GOOD"))
 	})
 
+	// GET /todos
+	todoRepo := repo.New(app.db)
+	todoService := todosService.NewService(todoRepo)
+	todoHandler := todos.NewHandler(todoService)
+	r.Get("/todos", todoHandler.ListTodos)
+	r.Get("/todo/{id}", todoHandler.ListToDosByID)
+
+	// POST /todo/create
+	r.Post("/todo/create", todoHandler.CreateTodo)
+
+	// PUT /todo/update
+	r.Put("/todo/update/{id}",todoHandler.UpdateTodo)
+
+	// DELETE /todo/delete/{id}
+	r.Delete("/todo/delete/{id}", todoHandler.DeleteTodoByID)
 	return r;
 }
 
@@ -49,6 +70,7 @@ func (app *application) run (h http.Handler) error {
 
 type application struct {
 	config config
+	db *pgxpool.Pool
 }
 
 type config struct {
@@ -57,5 +79,5 @@ type config struct {
 }
 
 type dbConfig struct {
-	// dsn string
+	dsn string
 }
