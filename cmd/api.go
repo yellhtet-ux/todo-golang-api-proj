@@ -35,21 +35,24 @@ func (app *application) mount () http.Handler {
 		w.Write([]byte("ALL GOOD"))
 	})
 
-	// GET /todos
 	todoRepo := repo.New(app.db)
 	todoService := todosService.NewService(todoRepo)
 	todoHandler := todos.NewHandler(todoService)
+
+	// GET /todos
 	r.Get("/todos", todoHandler.ListTodos)
 	r.Get("/todo/{id}", todoHandler.ListToDosByID)
 
 	// POST /todo/create
 	r.Post("/todo/create", todoHandler.CreateTodo)
 
-	// PUT /todo/update
-	r.Put("/todo/update/{id}",todoHandler.UpdateTodo)
+	// PUT /todo/update/{id}
+	r.Put("/todo/update/{id}",todoHandler.UpdateTodoByStatus)
+	r.Put("/todo/update/{id}",todoHandler.UpdateToDoByPriority)
 
 	// DELETE /todo/delete/{id}
 	r.Delete("/todo/delete/{id}", todoHandler.DeleteTodoByID)
+	
 	return r;
 }
 

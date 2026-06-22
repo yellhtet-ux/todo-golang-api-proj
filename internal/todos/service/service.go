@@ -16,7 +16,8 @@ type Service interface {
 	CreateTodo(ctx context.Context, todo *repo.CreateToDoParams) (repo.Todo,error)
 
 	// PUT
-	UpdateTodoByID(ctx context.Context, todo *repo.UpdateToDoStatusParams) (repo.Todo,error)
+	UpdateTodoByStatus(ctx context.Context, todo *repo.UpdateToDoStatusParams) (repo.Todo,error)
+	UpdateToDoByPriority(ctx context.Context,todo *repo.UpdateToDoPriorityParams) (repo.Todo,error)
 
 	// DELETE
 	DeleteTodoByID(ctx context.Context, id pgtype.UUID) error
@@ -51,9 +52,13 @@ func (s *svc) CreateTodo(ctx context.Context, todo *repo.CreateToDoParams) (repo
 	})
 }
 
-func (s *svc) UpdateTodoByID(ctx context.Context,todo *repo.UpdateToDoStatusParams) (repo.Todo,error) {
+func (s *svc) UpdateTodoByStatus(ctx context.Context,todo *repo.UpdateToDoStatusParams) (repo.Todo,error) {
 	return s.repo.UpdateToDoStatus(ctx,*todo)
 } 
+
+func (s *svc) UpdateToDoByPriority(ctx context.Context,todo *repo.UpdateToDoPriorityParams) (repo.Todo,error) {
+	return s.repo.UpdateToDoPriority(ctx,*todo)
+}
 
 func (s *svc) DeleteTodoByID(ctx context.Context, id pgtype.UUID) error {
 	return s.repo.DeleteTodoByID(ctx,id)

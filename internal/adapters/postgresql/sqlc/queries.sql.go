@@ -122,6 +122,38 @@ func (q *Queries) ListToDosByID(ctx context.Context, id pgtype.UUID) (Todo, erro
 	return i, err
 }
 
+const updateToDoPriority = `-- name: UpdateToDoPriority :one
+UPDATE todos
+SET
+    priority = $2,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at
+`
+
+type UpdateToDoPriorityParams struct {
+	ID       pgtype.UUID  `json:"id"`
+	Priority TodoPriority `json:"priority"`
+}
+
+func (q *Queries) UpdateToDoPriority(ctx context.Context, arg UpdateToDoPriorityParams) (Todo, error) {
+	row := q.db.QueryRow(ctx, updateToDoPriority, arg.ID, arg.Priority)
+	var i Todo
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+		&i.DueAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const updateToDoStatus = `-- name: UpdateToDoStatus :one
 UPDATE todos
 SET 

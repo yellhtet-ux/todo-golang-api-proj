@@ -25,5 +25,13 @@ SET
 WHERE id = $1
 RETURNING *;
 
+-- name: UpdateToDoPriority :one
+UPDATE todos
+SET
+    priority = $2,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING *;
+
 -- name: DeleteTodoByID :exec
 DELETE FROM todos WHERE id = $1;

@@ -15,6 +15,7 @@ type Querier interface {
 	DeleteTodoByID(ctx context.Context, id pgtype.UUID) error
 	ListToDos(ctx context.Context) ([]Todo, error)
 	ListToDosByID(ctx context.Context, id pgtype.UUID) (Todo, error)
+	UpdateToDoPriority(ctx context.Context, arg UpdateToDoPriorityParams) (Todo, error)
 	UpdateToDoStatus(ctx context.Context, arg UpdateToDoStatusParams) (Todo, error)
 }
 

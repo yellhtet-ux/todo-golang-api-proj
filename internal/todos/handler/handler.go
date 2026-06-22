@@ -84,7 +84,8 @@ func (h *handler) ListToDosByID(w http.ResponseWriter,r *http.Request)  {
 	}
 
 	// UPDATE ENDPOINTS
-	func (h *handler) UpdateTodo(w http.ResponseWriter,r *http.Request) {
+	// UPDATE TODO BY STATUS
+	func (h *handler) UpdateTodoByStatus(w http.ResponseWriter,r *http.Request) {
 		idParam := chi.URLParam(r, "id")
 		var id pgtype.UUID
 
@@ -107,13 +108,46 @@ func (h *handler) ListToDosByID(w http.ResponseWriter,r *http.Request)  {
 			Status: repo.TodoStatus(updatedStatus.Status),
 		}
 
-		updatedTodo, err := h.service.UpdateTodoByID(r.Context(),updatedStatusParams)
+		updatedTodo, err := h.service.UpdateTodoByStatus(r.Context(),updatedStatusParams)
 		if err != nil {
 			log.Println(err)
 			json.InternalServerError(w,err)
 		}
 
 		json.Write(w,http.StatusOK,updatedTodo)
+	}
+
+	// UPDATE TODO BY PRIORITY
+	func (h *handler) UpdateToDoByPriority (w http.ResponseWriter,r *http.Request) {
+		idParam := chi.URLParam(r,"id")
+		var id pgtype.UUID
+		if err := id.Scan(idParam); err != nil {
+			log.Println(err)
+			json.InvalidRequest(w,err)
+			return
+		}
+
+		var updatedPriority  dto.UpdateTodoPriority
+
+		if err := json.Read(r, updatedPriority); err != nil {
+			log.Println(err)
+			json.InvalidRequest(w,err)
+			return
+		}
+
+		updatedPriorityParam := &repo.UpdateToDoPriorityParams{
+			ID: id,
+			Priority: repo.TodoPriority(updatedPriority.Status),
+		}
+
+		todo, err := h.service.UpdateToDoByPriority(r.Context(),updatedPriorityParam)
+		if err != nil {
+			log.Panicln(err)
+			json.InternalServerError(w,err)
+			return
+		}
+
+		json.Write(w,http.StatusOK,todo)
 	}
 	
 	// DELETE ENDPOINTS
