@@ -8,16 +8,22 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yellhtet-ux/todo-golang-api-proj/env"
+
+	_ "github.com/yellhtet-ux/todo-golang-api-proj/cmd/docs"
 )
 
-
+// @title           Todo API
+// @version         1.0
+// @description     A REST API for managing todos.
+// @host            localhost:1323
+// @BasePath        /
 func main () {
 
 	ctx := context.Background()
 
 	// Config
 	cfg := config {
-		addr: ":8080",
+		addr: ":1323",
 		db: dbConfig{
 		dsn: env.GetString("GOOSE_DBSTRING","host=localhost user=postgres password=postgres dbname=todos sslmode=disable"),
 		},

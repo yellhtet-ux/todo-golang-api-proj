@@ -2,6 +2,7 @@ package todos
 
 import (
 	"context"
+	"log"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	repo "github.com/yellhtet-ux/todo-golang-api-proj/internal/adapters/postgresql/sqlc"
@@ -9,8 +10,8 @@ import (
 
 type Service interface {
 	// GET
-	ListToDos(ctx context.Context) ([]repo.Todo,error) 
-	ListToDosByID(ctx context.Context, id pgtype.UUID) (repo.Todo,error)
+	ListToDos(ctx context.Context,userID pgtype.UUID) ([]repo.Todo,error) 
+	ListToDosByID(ctx context.Context, params repo.ListToDosByIDParams) (repo.Todo,error)
 
 	// POST
 	CreateTodo(ctx context.Context, todo *repo.CreateToDoParams) (repo.Todo,error)
@@ -20,7 +21,7 @@ type Service interface {
 	UpdateToDoByPriority(ctx context.Context,todo *repo.UpdateToDoPriorityParams) (repo.Todo,error)
 
 	// DELETE
-	DeleteTodoByID(ctx context.Context, id pgtype.UUID) error
+	DeleteTodoByID(ctx context.Context, params repo.DeleteTodoByIDParams) error
 }
 
 type svc struct {
@@ -34,16 +35,18 @@ func NewService (repo repo.Querier) Service {
 	}
 }
 
-func (s *svc) ListToDos(ctx context.Context) ([]repo.Todo,error) {
-	return s.repo.ListToDos(ctx)
+func (s *svc) ListToDos(ctx context.Context,userID pgtype.UUID) ([]repo.Todo,error) {
+	log.Println("USER ID", userID)
+	return s.repo.ListToDos(ctx,userID)
 }
 
-func (s *svc) ListToDosByID(ctx context.Context, id pgtype.UUID) (repo.Todo,error) {
-	return s.repo.ListToDosByID(ctx, id)
+func (s *svc) ListToDosByID(ctx context.Context, params repo.ListToDosByIDParams) (repo.Todo,error) {
+	return s.repo.ListToDosByID(ctx, params)
 }
 
 func (s *svc) CreateTodo(ctx context.Context, todo *repo.CreateToDoParams) (repo.Todo,error) {
 	return s.repo.CreateToDo(ctx,repo.CreateToDoParams{
+		UserID: todo.UserID,
 		Title: todo.Title,
 		Description: todo.Description,
 		Status: todo.Status,
@@ -60,6 +63,6 @@ func (s *svc) UpdateToDoByPriority(ctx context.Context,todo *repo.UpdateToDoPrio
 	return s.repo.UpdateToDoPriority(ctx,*todo)
 }
 
-func (s *svc) DeleteTodoByID(ctx context.Context, id pgtype.UUID) error {
-	return s.repo.DeleteTodoByID(ctx,id)
+func (s *svc) DeleteTodoByID(ctx context.Context, params repo.DeleteTodoByIDParams) error {
+	return s.repo.DeleteTodoByID(ctx,params)
 }

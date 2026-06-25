@@ -99,6 +99,7 @@ func (ns NullTodoStatus) Value() (driver.Value, error) {
 
 type Todo struct {
 	ID          pgtype.UUID        `json:"id"`
+	UserID      pgtype.UUID        `json:"user_id"`
 	Title       string             `json:"title"`
 	Description pgtype.Text        `json:"description"`
 	Status      TodoStatus         `json:"status"`
@@ -108,4 +109,14 @@ type Todo struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type User struct {
+	ID           pgtype.UUID        `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	DisplayName  pgtype.Text        `json:"display_name"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
 }

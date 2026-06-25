@@ -1,0 +1,440 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "A REST API for managing todos.",
+        "title": "Todo API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:1323",
+    "basePath": "/",
+    "paths": {
+        "/health": {
+            "get": {
+                "description": "Returns OK when the server is running",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "ALL GOOD",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/todo/create": {
+            "post": {
+                "description": "Creates a new todo item",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Create a todo",
+                "parameters": [
+                    {
+                        "description": "Todo to create",
+                        "name": "todo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateTodoRequestDoc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Todo created successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/todo/delete/{id}": {
+            "delete": {
+                "description": "Soft-deletes a todo by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Delete a todo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Todo deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/todo/update/priority/{id}": {
+            "put": {
+                "description": "Updates the priority of a todo by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Update todo priority",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New priority",
+                        "name": "priority",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateTodoPriority"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TodoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/todo/update/status/{id}": {
+            "put": {
+                "description": "Updates the status of a todo by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Update todo status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New status",
+                        "name": "status",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateTodoStatus"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TodoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/todo/{id}": {
+            "get": {
+                "description": "Returns a single todo matching the given UUID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Get a todo by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Todo UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TodoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/todos": {
+            "get": {
+                "description": "Returns every todo in the system",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "List all todos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.TodoResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.CreateTodoRequestDoc": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Milk and eggs"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "priority": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.TodoPriority"
+                        }
+                    ],
+                    "example": "medium"
+                },
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.TodoStatus"
+                        }
+                    ],
+                    "example": "todo"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Buy groceries"
+                }
+            }
+        },
+        "dto.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "invalid UUID"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid request"
+                }
+            }
+        },
+        "dto.TodoPriority": {
+            "type": "string",
+            "enum": [
+                "low",
+                "medium",
+                "high"
+            ],
+            "x-enum-varnames": [
+                "PriorityLow",
+                "PriorityMedium",
+                "PriorityHigh"
+            ]
+        },
+        "dto.TodoResponse": {
+            "type": "object",
+            "properties": {
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Milk and eggs"
+                },
+                "due_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "priority": {
+                    "enum": [
+                        "low",
+                        "medium",
+                        "high"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.TodoPriority"
+                        }
+                    ],
+                    "example": "medium"
+                },
+                "status": {
+                    "enum": [
+                        "todo",
+                        "in_progress",
+                        "completed"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.TodoStatus"
+                        }
+                    ],
+                    "example": "todo"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Buy groceries"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TodoStatus": {
+            "type": "string",
+            "enum": [
+                "todo",
+                "pending",
+                "completed"
+            ],
+            "x-enum-varnames": [
+                "StatusTodo",
+                "StatusPending",
+                "StatusCompleted"
+            ]
+        },
+        "dto.UpdateTodoPriority": {
+            "type": "object",
+            "properties": {
+                "priority": {
+                    "$ref": "#/definitions/dto.TodoPriority"
+                }
+            }
+        },
+        "dto.UpdateTodoStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/dto.TodoStatus"
+                }
+            }
+        }
+    }
+}

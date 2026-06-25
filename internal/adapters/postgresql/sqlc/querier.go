@@ -12,9 +12,20 @@ import (
 
 type Querier interface {
 	CreateToDo(ctx context.Context, arg CreateToDoParams) (Todo, error)
-	DeleteTodoByID(ctx context.Context, id pgtype.UUID) error
-	ListToDos(ctx context.Context) ([]Todo, error)
-	ListToDosByID(ctx context.Context, id pgtype.UUID) (Todo, error)
+	// ============================================================================
+	// USER QUERIES
+	// ============================================================================
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// Soft delete or hard delete scoped to user
+	DeleteTodoByID(ctx context.Context, arg DeleteTodoByIDParams) error
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	// ============================================================================
+	// TODO QUERIES (Updated with User Scope)
+	// ============================================================================
+	// Scoped to only list the current user's active todos
+	ListToDos(ctx context.Context, userID pgtype.UUID) ([]Todo, error)
+	// Ensures users can only fetch their own todos
+	ListToDosByID(ctx context.Context, arg ListToDosByIDParams) (Todo, error)
 	UpdateToDoPriority(ctx context.Context, arg UpdateToDoPriorityParams) (Todo, error)
 	UpdateToDoStatus(ctx context.Context, arg UpdateToDoStatusParams) (Todo, error)
 }

@@ -33,13 +33,47 @@ type Todo struct {
 }
 
 type CreateTodoRequest struct {
+	UserID      pgtype.UUID  `json:"user_id"`
 	Title       string       `json:"title"`
-	Description pgtype.Text       `json:"description"`
+	Description pgtype.Text  `json:"description"`
 	DueDate     time.Time    `json:"due_date"`
 	Status      TodoStatus   `json:"status"`
 	Priority    TodoPriority `json:"priority"`
 }
 
-type UpdateTodoPriority struct {
+// CreateTodoRequestDoc documents the create todo request body for Swagger.
+type CreateTodoRequestDoc struct {
+	UserID      pgtype.UUID  `json:"user_id"`
+	Title       string       `json:"title" example:"Buy groceries"`
+	Description string       `json:"description" example:"Milk and eggs"`
+	DueDate     time.Time    `json:"due_date"`
+	Status      TodoStatus   `json:"status" example:"todo"`
+	Priority    TodoPriority `json:"priority" example:"medium"`
+}
+
+type UpdateTodoStatus struct {
 	Status TodoStatus `json:"status"`
+}
+
+type UpdateTodoPriority struct {
+	Priority TodoPriority `json:"priority"`
+}
+
+// TodoResponse represents a todo item returned by the API.
+type TodoResponse struct {
+	ID          string       `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Title       string       `json:"title" example:"Buy groceries"`
+	Description string       `json:"description" example:"Milk and eggs"`
+	Status      TodoStatus   `json:"status" example:"todo" enums:"todo,in_progress,completed"`
+	Priority    TodoPriority `json:"priority" example:"medium" enums:"low,medium,high"`
+	DueAt       time.Time    `json:"due_at"`
+	CompletedAt *time.Time   `json:"completed_at,omitempty"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+}
+
+// ErrorResponse represents an error response body.
+type ErrorResponse struct {
+	Message string `json:"message" example:"Invalid request"`
+	Error   string `json:"error" example:"invalid UUID"`
 }

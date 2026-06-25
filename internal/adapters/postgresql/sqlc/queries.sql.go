@@ -13,18 +13,20 @@ import (
 
 const createToDo = `-- name: CreateToDo :one
 INSERT INTO todos (
+    user_id, -- 👈 Added link to the creator
     title,
     description,
     status,
     priority,
     due_at
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6
 )
-RETURNING id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at
+RETURNING id, user_id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at
 `
 
 type CreateToDoParams struct {
+	UserID      pgtype.UUID        `json:"user_id"`
 	Title       string             `json:"title"`
 	Description pgtype.Text        `json:"description"`
 	Status      TodoStatus         `json:"status"`
@@ -34,6 +36,7 @@ type CreateToDoParams struct {
 
 func (q *Queries) CreateToDo(ctx context.Context, arg CreateToDoParams) (Todo, error) {
 	row := q.db.QueryRow(ctx, createToDo,
+		arg.UserID,
 		arg.Title,
 		arg.Description,
 		arg.Status,
@@ -43,6 +46,7 @@ func (q *Queries) CreateToDo(ctx context.Context, arg CreateToDoParams) (Todo, e
 	var i Todo
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Title,
 		&i.Description,
 		&i.Status,
@@ -56,21 +60,91 @@ func (q *Queries) CreateToDo(ctx context.Context, arg CreateToDoParams) (Todo, e
 	return i, err
 }
 
-const deleteTodoByID = `-- name: DeleteTodoByID :exec
-DELETE FROM todos WHERE id = $1
+const createUser = `-- name: CreateUser :one
+
+INSERT INTO users (
+    email,
+    password_hash,
+    display_name
+) VALUES (
+    $1, $2, $3
+)
+RETURNING id, email, password_hash, display_name, created_at, updated_at, deleted_at
 `
 
-func (q *Queries) DeleteTodoByID(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteTodoByID, id)
+type CreateUserParams struct {
+	Email        string      `json:"email"`
+	PasswordHash string      `json:"password_hash"`
+	DisplayName  pgtype.Text `json:"display_name"`
+}
+
+// ============================================================================
+// USER QUERIES
+// ============================================================================
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.PasswordHash, arg.DisplayName)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.DisplayName,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const deleteTodoByID = `-- name: DeleteTodoByID :exec
+UPDATE todos 
+SET deleted_at = CURRENT_TIMESTAMP 
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteTodoByIDParams struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+// Soft delete or hard delete scoped to user
+func (q *Queries) DeleteTodoByID(ctx context.Context, arg DeleteTodoByIDParams) error {
+	_, err := q.db.Exec(ctx, deleteTodoByID, arg.ID, arg.UserID)
 	return err
 }
 
-const listToDos = `-- name: ListToDos :many
-SELECT id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at FROM todos
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, password_hash, display_name, created_at, updated_at, deleted_at FROM users 
+WHERE email = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) ListToDos(ctx context.Context) ([]Todo, error) {
-	rows, err := q.db.Query(ctx, listToDos)
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.DisplayName,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const listToDos = `-- name: ListToDos :many
+
+SELECT id, user_id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at FROM todos 
+WHERE user_id = $1 AND deleted_at IS NULL
+`
+
+// ============================================================================
+// TODO QUERIES (Updated with User Scope)
+// ============================================================================
+// Scoped to only list the current user's active todos
+func (q *Queries) ListToDos(ctx context.Context, userID pgtype.UUID) ([]Todo, error) {
+	rows, err := q.db.Query(ctx, listToDos, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +154,7 @@ func (q *Queries) ListToDos(ctx context.Context) ([]Todo, error) {
 		var i Todo
 		if err := rows.Scan(
 			&i.ID,
+			&i.UserID,
 			&i.Title,
 			&i.Description,
 			&i.Status,
@@ -101,14 +176,22 @@ func (q *Queries) ListToDos(ctx context.Context) ([]Todo, error) {
 }
 
 const listToDosByID = `-- name: ListToDosByID :one
-SELECT id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at FROM todos WHERE id = $1
+SELECT id, user_id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at FROM todos 
+WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 `
 
-func (q *Queries) ListToDosByID(ctx context.Context, id pgtype.UUID) (Todo, error) {
-	row := q.db.QueryRow(ctx, listToDosByID, id)
+type ListToDosByIDParams struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+// Ensures users can only fetch their own todos
+func (q *Queries) ListToDosByID(ctx context.Context, arg ListToDosByIDParams) (Todo, error) {
+	row := q.db.QueryRow(ctx, listToDosByID, arg.ID, arg.UserID)
 	var i Todo
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Title,
 		&i.Description,
 		&i.Status,
@@ -125,22 +208,24 @@ func (q *Queries) ListToDosByID(ctx context.Context, id pgtype.UUID) (Todo, erro
 const updateToDoPriority = `-- name: UpdateToDoPriority :one
 UPDATE todos
 SET
-    priority = $2,
+    priority = $3,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
-RETURNING id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at
+WHERE id = $1 AND user_id = $2 -- 👈 Security boundary check
+RETURNING id, user_id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at
 `
 
 type UpdateToDoPriorityParams struct {
 	ID       pgtype.UUID  `json:"id"`
+	UserID   pgtype.UUID  `json:"user_id"`
 	Priority TodoPriority `json:"priority"`
 }
 
 func (q *Queries) UpdateToDoPriority(ctx context.Context, arg UpdateToDoPriorityParams) (Todo, error) {
-	row := q.db.QueryRow(ctx, updateToDoPriority, arg.ID, arg.Priority)
+	row := q.db.QueryRow(ctx, updateToDoPriority, arg.ID, arg.UserID, arg.Priority)
 	var i Todo
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Title,
 		&i.Description,
 		&i.Status,
@@ -157,23 +242,25 @@ func (q *Queries) UpdateToDoPriority(ctx context.Context, arg UpdateToDoPriority
 const updateToDoStatus = `-- name: UpdateToDoStatus :one
 UPDATE todos
 SET 
-    status = $2,
-    completed_at = CASE WHEN $2 = 'completed'::todo_status THEN CURRENT_TIMESTAMP ELSE NULL END,
+    status = $3,
+    completed_at = CASE WHEN $3 = 'completed'::todo_status THEN CURRENT_TIMESTAMP ELSE NULL END,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
-RETURNING id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at
+WHERE id = $1 AND user_id = $2 -- 👈 Security boundary check
+RETURNING id, user_id, title, description, status, priority, due_at, completed_at, created_at, updated_at, deleted_at
 `
 
 type UpdateToDoStatusParams struct {
 	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
 	Status TodoStatus  `json:"status"`
 }
 
 func (q *Queries) UpdateToDoStatus(ctx context.Context, arg UpdateToDoStatusParams) (Todo, error) {
-	row := q.db.QueryRow(ctx, updateToDoStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updateToDoStatus, arg.ID, arg.UserID, arg.Status)
 	var i Todo
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Title,
 		&i.Description,
 		&i.Status,

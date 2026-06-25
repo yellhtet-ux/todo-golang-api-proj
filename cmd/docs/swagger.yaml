@@ -1,0 +1,290 @@
+basePath: /
+definitions:
+  dto.CreateTodoRequestDoc:
+    properties:
+      description:
+        example: Milk and eggs
+        type: string
+      due_date:
+        type: string
+      priority:
+        allOf:
+        - $ref: '#/definitions/dto.TodoPriority'
+        example: medium
+      status:
+        allOf:
+        - $ref: '#/definitions/dto.TodoStatus'
+        example: todo
+      title:
+        example: Buy groceries
+        type: string
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        example: invalid UUID
+        type: string
+      message:
+        example: Invalid request
+        type: string
+    type: object
+  dto.TodoPriority:
+    enum:
+    - low
+    - medium
+    - high
+    type: string
+    x-enum-varnames:
+    - PriorityLow
+    - PriorityMedium
+    - PriorityHigh
+  dto.TodoResponse:
+    properties:
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      description:
+        example: Milk and eggs
+        type: string
+      due_at:
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      priority:
+        allOf:
+        - $ref: '#/definitions/dto.TodoPriority'
+        enum:
+        - low
+        - medium
+        - high
+        example: medium
+      status:
+        allOf:
+        - $ref: '#/definitions/dto.TodoStatus'
+        enum:
+        - todo
+        - in_progress
+        - completed
+        example: todo
+      title:
+        example: Buy groceries
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.TodoStatus:
+    enum:
+    - todo
+    - pending
+    - completed
+    type: string
+    x-enum-varnames:
+    - StatusTodo
+    - StatusPending
+    - StatusCompleted
+  dto.UpdateTodoPriority:
+    properties:
+      priority:
+        $ref: '#/definitions/dto.TodoPriority'
+    type: object
+  dto.UpdateTodoStatus:
+    properties:
+      status:
+        $ref: '#/definitions/dto.TodoStatus'
+    type: object
+host: localhost:1323
+info:
+  contact: {}
+  description: A REST API for managing todos.
+  title: Todo API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Returns OK when the server is running
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: ALL GOOD
+          schema:
+            type: string
+      summary: Health check
+      tags:
+      - health
+  /todo/{id}:
+    get:
+      description: Returns a single todo matching the given UUID
+      parameters:
+      - description: Todo UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TodoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get a todo by ID
+      tags:
+      - todos
+  /todo/create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new todo item
+      parameters:
+      - description: Todo to create
+        in: body
+        name: todo
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTodoRequestDoc'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Todo created successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a todo
+      tags:
+      - todos
+  /todo/delete/{id}:
+    delete:
+      description: Soft-deletes a todo by ID
+      parameters:
+      - description: Todo UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Todo deleted successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete a todo
+      tags:
+      - todos
+  /todo/update/priority/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Updates the priority of a todo by ID
+      parameters:
+      - description: Todo UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New priority
+        in: body
+        name: priority
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTodoPriority'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TodoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update todo priority
+      tags:
+      - todos
+  /todo/update/status/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Updates the status of a todo by ID
+      parameters:
+      - description: Todo UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status
+        in: body
+        name: status
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTodoStatus'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TodoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update todo status
+      tags:
+      - todos
+  /todos:
+    get:
+      description: Returns every todo in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.TodoResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List all todos
+      tags:
+      - todos
+swagger: "2.0"
