@@ -18,7 +18,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// Soft delete or hard delete scoped to user
 	DeleteTodoByID(ctx context.Context, arg DeleteTodoByIDParams) error
-	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	// ============================================================================
 	// TODO QUERIES (Updated with User Scope)
 	// ============================================================================

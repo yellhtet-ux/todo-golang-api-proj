@@ -12,8 +12,7 @@ import (
 	"github.com/swaggo/http-swagger"
 
 	repo "github.com/yellhtet-ux/todo-golang-api-proj/internal/adapters/postgresql/sqlc"
-	"github.com/yellhtet-ux/todo-golang-api-proj/internal/todos/handler"
-	todosService "github.com/yellhtet-ux/todo-golang-api-proj/internal/todos/service"
+	"github.com/yellhtet-ux/todo-golang-api-proj/internal/todos"
 	"github.com/yellhtet-ux/todo-golang-api-proj/internal/user"
 
 )
@@ -44,16 +43,17 @@ func (app *application) mount () http.Handler {
 	userHandler := user.NewHandler(userService)
 
 	r.Post("/v1/user/signup",userHandler.CreateUser)
+	r.Get("/v1/user/{userid}",userHandler.GetUserByID)
 
 
 	// Todos Related Routes
 	todoRepo := repo.New(app.db)
-	todoService := todosService.NewService(todoRepo)
+	todoService := todos.NewService(todoRepo)
 	todoHandler := todos.NewHandler(todoService)
 
 	// GET /todos
 	r.Get("/v1/todos/{userid}", todoHandler.ListTodos)
-	r.Get("/v1/todo/{id}", todoHandler.ListToDosByID)
+	r.Get("/v1/todo/", todoHandler.ListToDosByID)
 
 	// POST /todo/create
 	r.Post("/v1/todo/create", todoHandler.CreateTodo)

@@ -113,13 +113,13 @@ func (q *Queries) DeleteTodoByID(ctx context.Context, arg DeleteTodoByIDParams) 
 	return err
 }
 
-const getUserByEmail = `-- name: GetUserByEmail :one
+const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, password_hash, display_name, created_at, updated_at, deleted_at FROM users 
-WHERE email = $1 AND deleted_at IS NULL
+WHERE id = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, email)
+func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,

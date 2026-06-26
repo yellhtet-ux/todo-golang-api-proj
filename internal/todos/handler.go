@@ -8,15 +8,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	repo "github.com/yellhtet-ux/todo-golang-api-proj/internal/adapters/postgresql/sqlc"
 	"github.com/yellhtet-ux/todo-golang-api-proj/internal/json"
-	"github.com/yellhtet-ux/todo-golang-api-proj/internal/todos/dto"
-	todos "github.com/yellhtet-ux/todo-golang-api-proj/internal/todos/service"
 )
 
 type handler struct {
-	service todos.Service
+	service Service
 }
 
-func NewHandler(service todos.Service) *handler {
+func NewHandler(service Service) *handler {
 	return &handler{
 		service: service,
 	}
@@ -29,7 +27,7 @@ func NewHandler(service todos.Service) *handler {
 // @Produce      json
 // @Success      200  {array}   dto.TodoResponse
 // @Failure      500  {object}  dto.ErrorResponse
-// @Router       /todos [get]
+// @Router       /v1/todos/{user_id} [get]
 func (h *handler) ListTodos(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r,"userid")
 	var userID pgtype.UUID
@@ -46,6 +44,7 @@ func (h *handler) ListTodos(w http.ResponseWriter, r *http.Request) {
 		json.InternalServerError(w,err)
 		return
 	}
+
 	json.Write(w, http.StatusOK, products)
 }
 
@@ -55,30 +54,27 @@ func (h *handler) ListTodos(w http.ResponseWriter, r *http.Request) {
 // @Tags         todos
 // @Produce      json
 // @Param        id   path      string  true  "Todo UUID"
+// @Param        user_id   path  string  true  "User UUID"
 // @Success      200  {object}  dto.TodoResponse
 // @Failure      400  {object}  dto.ErrorResponse
 // @Failure      500  {object}  dto.ErrorResponse
-// @Router       /todo/{id} [get]
+// @Router       /v1/todo/ [get]
 func (h *handler) ListToDosByID(w http.ResponseWriter, r *http.Request) {
-	var param repo.ListToDosByIDParams
-	var idParam = chi.URLParam(r, "id")
-	var id pgtype.UUID
-	if err := id.Scan(idParam); err != nil {
+	var param ListToDosByIDParam 
+
+	if err := json.Read(r,&param); err != nil {
 		log.Println(err)
-		json.InvalidRequest(w, err)
-		return
+		json.InvalidRequest(w,err)
 	}
-		param = repo.ListToDosByIDParams {
-			ID: id,
-			UserID: id,
-		}
 
 	todo, err := h.service.ListToDosByID(r.Context(), param)
+
 	if err != nil {
 		log.Println(err)
 		json.InternalServerError(w, err)
 		return
 	}
+
 	json.Write(w, http.StatusOK, todo)
 }
 
@@ -92,25 +88,16 @@ func (h *handler) ListToDosByID(w http.ResponseWriter, r *http.Request) {
 // @Failure      500   {object}  dto.ErrorResponse
 // @Router       /todo/create [post]
 func (h *handler) CreateTodo(w http.ResponseWriter, r *http.Request) {
-	var todo *dto.CreateTodoRequest
+	var todo CreateTodoRequest
 
-	if err := json.Read(r, &todo); err != nil {
+if err := json.Read(r, &todo); err != nil {
 		log.Println(err)
 		json.InvalidRequest(w, err)
 		return
 	}
 
-	todoParams := &repo.CreateToDoParams{
-		UserID: 		 todo.UserID,
-		Title:       todo.Title,
-		Description: todo.Description,
-		Status:      repo.TodoStatus(todo.Status),
-		Priority:    repo.TodoPriority(todo.Priority),
-		DueAt:       pgtype.Timestamptz{Time: todo.DueDate, Valid: true},
-	}
+	_, err := h.service.CreateTodo(r.Context(), todo)
 
-	log.Printf("To Do Params:%+v\n", todoParams)
-	_, err := h.service.CreateTodo(r.Context(), todoParams)
 	if err != nil {
 		log.Println(err)
 		json.InternalServerError(w, err)
@@ -141,7 +128,7 @@ func (h *handler) UpdateTodoByStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var updatedStatus dto.UpdateTodoStatus
+	var updatedStatus UpdateTodoStatus
 
 	if err := json.Read(r, &updatedStatus); err != nil {
 		log.Println(err)
@@ -185,7 +172,7 @@ func (h *handler) UpdateToDoByPriority(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var updatedPriority dto.UpdateTodoPriority
+	var updatedPriority UpdateTodoPriority
 
 	if err := json.Read(r, &updatedPriority); err != nil {
 		log.Println(err)

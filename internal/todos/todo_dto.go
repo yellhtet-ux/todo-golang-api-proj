@@ -1,4 +1,4 @@
-package dto
+package todos
 
 import (
 	"time"
@@ -70,6 +70,13 @@ type TodoResponse struct {
 	CompletedAt *time.Time   `json:"completed_at,omitempty"`
 	CreatedAt   time.Time    `json:"created_at"`
 	UpdatedAt   time.Time    `json:"updated_at"`
+}
+
+
+// ListToDoByIDParam... 
+type ListToDosByIDParam struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
 }
 
 // ErrorResponse represents an error response body.
