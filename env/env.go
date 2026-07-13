@@ -1,6 +1,8 @@
 package env
 
-import "os"
+import (
+	"os"
+)
 
 func GetString(key,fallback string) string {
 	if value := os.Getenv(key); value != "" {

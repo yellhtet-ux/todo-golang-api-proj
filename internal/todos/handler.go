@@ -1,13 +1,15 @@
 package todos
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	repo "github.com/yellhtet-ux/todo-golang-api-proj/internal/adapters/postgresql/sqlc"
+	"github.com/yellhtet-ux/todo-golang-api-proj/env"
 	"github.com/yellhtet-ux/todo-golang-api-proj/internal/json"
+	"github.com/yellhtet-ux/todo-golang-api-proj/internal/user"
 )
 
 type handler struct {
@@ -29,23 +31,25 @@ func NewHandler(service Service) *handler {
 // @Failure      500  {object}  dto.ErrorResponse
 // @Router       /v1/todos/{user_id} [get]
 func (h *handler) ListTodos(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r,"userid")
-	var userID pgtype.UUID
 
-	if err := userID.Scan(id); err != nil {
-		log.Println(err)
-		json.InvalidRequest(w,err)
-	}
+	claimKey := env.GetString("USER_CLAIMS","user_claims")
 
-	products, err := h.service.ListToDos(r.Context(),userID)
+	claims, ok := r.Context().Value(claimKey).(*user.CustomClaims)
 
-	if err != nil {
-		log.Println(err)
-		json.InternalServerError(w,err)
+	if !ok {
+		json.InternalServerError(w,fmt.Errorf("failed to get user claims"),nil)
 		return
 	}
 
-	json.Write(w, http.StatusOK, products)
+	todos, err := h.service.ListToDos(r.Context(),claims.UserID)
+
+	if err != nil {
+		log.Println(err)
+		json.InternalServerError(w,err,nil)
+		return
+	}
+
+	json.Write(w, http.StatusOK, todos)
 }
 
 // ListToDosByID godoc
@@ -60,18 +64,29 @@ func (h *handler) ListTodos(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  dto.ErrorResponse
 // @Router       /v1/todo/ [get]
 func (h *handler) ListToDosByID(w http.ResponseWriter, r *http.Request) {
-	var param ListToDosByIDParam 
+	idParam := chi.URLParam(r,"todo_id")
+	var id pgtype.UUID
 
-	if err := json.Read(r,&param); err != nil {
+	if err := id.Scan(idParam); err != nil {
 		log.Println(err)
-		json.InvalidRequest(w,err)
+		json.InvalidRequest(w,err,nil)
+		return
 	}
 
-	todo, err := h.service.ListToDosByID(r.Context(), param)
+	claimKey := env.GetString("USER_CLAIMS","user_claims")
+
+	claims , ok := r.Context().Value(claimKey).(*user.CustomClaims)
+
+	if !ok {
+		json.InternalServerError(w,fmt.Errorf("failed to get user claims"),nil)
+		return 
+	}
+
+	todo, err := h.service.ListToDosByID(r.Context(), id, claims.UserID)
 
 	if err != nil {
 		log.Println(err)
-		json.InternalServerError(w, err)
+		json.NotFound(w,err,nil)
 		return
 	}
 
@@ -90,17 +105,26 @@ func (h *handler) ListToDosByID(w http.ResponseWriter, r *http.Request) {
 func (h *handler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo CreateTodoRequest
 
-if err := json.Read(r, &todo); err != nil {
+	if err := json.Read(r, &todo); err != nil {
 		log.Println(err)
-		json.InvalidRequest(w, err)
+		json.InvalidRequest(w, err,nil)
 		return
 	}
 
-	_, err := h.service.CreateTodo(r.Context(), todo)
+	claimKey := env.GetString("USER_CLAIMS","user_claims")
+
+	claims, ok := r.Context().Value(claimKey).(*user.CustomClaims)
+
+	if !ok {
+		json.InternalServerError(w,fmt.Errorf("failed to get user claims"),nil)
+		return
+	}
+
+ 	_, err := h.service.CreateTodo(r.Context(),claims.UserID,todo)
 
 	if err != nil {
 		log.Println(err)
-		json.InternalServerError(w, err)
+		json.NotFound(w,err,nil)
 		return
 	}
 	json.Write(w, http.StatusCreated, "Todo created successfully")
@@ -119,32 +143,40 @@ if err := json.Read(r, &todo); err != nil {
 // @Failure      500     {object}  dto.ErrorResponse
 // @Router       /todo/update/status/{id} [put]
 func (h *handler) UpdateTodoByStatus(w http.ResponseWriter, r *http.Request) {
-	idParam := chi.URLParam(r, "id")
+	idParam := chi.URLParam(r, "todo_id")
 	var id pgtype.UUID
 
 	if err := id.Scan(idParam); err != nil {
 		log.Println(err)
-		json.InvalidRequest(w, err)
+		json.InvalidRequest(w, err,nil)
 		return
 	}
 
-	var updatedStatus UpdateTodoStatus
+	claimKey := env.GetString("USER_CLAIMS","user_claims")
+
+	claims, ok := r.Context().Value(claimKey).(*user.CustomClaims)
+
+	if !ok {
+		json.InternalServerError(w,fmt.Errorf("failed to get user claims"),nil)
+		return
+	}
+
+	var updatedStatus UpdateToDoStatusRequest
 
 	if err := json.Read(r, &updatedStatus); err != nil {
 		log.Println(err)
-		json.InvalidRequest(w, err)
+		json.InvalidRequest(w, err,nil)
 		return
 	}
 
-	updatedStatusParams := &repo.UpdateToDoStatusParams{
-		ID:     id,
-		Status: repo.TodoStatus(updatedStatus.Status),
-	}
+	updatedStatusParams := UpdateToDoStatusRequest{
+			Status: updatedStatus.Status,
+	} 
 
-	updatedTodo, err := h.service.UpdateTodoByStatus(r.Context(), updatedStatusParams)
+	updatedTodo, err := h.service.UpdateTodoByStatus(r.Context(),id,claims.UserID,updatedStatusParams)
 	if err != nil {
 		log.Println(err)
-		json.InternalServerError(w, err)
+		json.NotFound(w, err,nil)
 		return
 	}
 
@@ -164,31 +196,39 @@ func (h *handler) UpdateTodoByStatus(w http.ResponseWriter, r *http.Request) {
 // @Failure      500       {object}  dto.ErrorResponse
 // @Router       /todo/update/priority/{id} [put]
 func (h *handler) UpdateToDoByPriority(w http.ResponseWriter, r *http.Request) {
-	idParam := chi.URLParam(r, "id")
+	idParam := chi.URLParam(r, "todo_id")
 	var id pgtype.UUID
 	if err := id.Scan(idParam); err != nil {
 		log.Println(err)
-		json.InvalidRequest(w, err)
+		json.InvalidRequest(w, err,nil)
 		return
 	}
 
-	var updatedPriority UpdateTodoPriority
+	claimKey := env.GetString("USER_CLAIMS","user_claims")
+
+	claims, ok := r.Context().Value(claimKey).(*user.CustomClaims)
+
+	if !ok {
+		json.InternalServerError(w,fmt.Errorf("failed to get user claims"),nil)
+		return
+	}
+
+	var updatedPriority UpdateToDoPriorityRequest 
 
 	if err := json.Read(r, &updatedPriority); err != nil {
 		log.Println(err)
-		json.InvalidRequest(w, err)
+		json.InvalidRequest(w, err,nil)
 		return
 	}
 
-	updatedPriorityParam := &repo.UpdateToDoPriorityParams{
-		ID:       id,
-		Priority: repo.TodoPriority(updatedPriority.Priority),
+	updatedPriorityParam := UpdateToDoPriorityRequest {
+		Priority: updatedPriority.Priority,
 	}
 
-	todo, err := h.service.UpdateToDoByPriority(r.Context(), updatedPriorityParam)
+	todo, err := h.service.UpdateToDoByPriority(r.Context(),id,claims.UserID,updatedPriorityParam)
 	if err != nil {
 		log.Println(err)
-		json.InternalServerError(w, err)
+		json.NotFound(w, err,nil)
 		return
 	}
 
@@ -206,24 +246,28 @@ func (h *handler) UpdateToDoByPriority(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  dto.ErrorResponse
 // @Router       /todo/delete/{id} [delete]
 func (h *handler) DeleteTodoByID(w http.ResponseWriter, r *http.Request) {
-	var param repo.DeleteTodoByIDParams
-	idParam := chi.URLParam(r, "id")
+	idParam := chi.URLParam(r, "todo_id")
 	var id pgtype.UUID
-	if err := id.Scan(idParam); err != nil {
-		log.Println(err)
-		json.InvalidRequest(w, err)
-		return
-	}
+		if err := id.Scan(idParam); err != nil {
+			log.Println(err)
+			json.InvalidRequest(w, err,nil)
+			return
+		}
 
-	param = repo.DeleteTodoByIDParams{
-		ID: id,
-		UserID: id,
-	}
+		claimKey := env.GetString("USER_CLAIMS","user_claims")
+		
+		claims, ok := r.Context().Value(claimKey).(*user.CustomClaims)
 
-	err := h.service.DeleteTodoByID(r.Context(), param)
+		if !ok {
+			json.InternalServerError(w,fmt.Errorf("failed to get user claims"),nil)
+			return
+		}
+
+		err := h.service.DeleteTodoByID(r.Context(),id,claims.UserID)
+
 	if err != nil {
 		log.Println(err)
-		json.InternalServerError(w, err)
+		json.NotFound(w, err,nil)
 		return
 	}
 	json.Write(w, http.StatusOK, "Todo deleted successfully")

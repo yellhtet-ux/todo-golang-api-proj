@@ -20,18 +20,20 @@ func NewHandler (service Service) *handler {
 }
 
 func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request)  {
-	var params createUserParam 
+	var params CreateUserRequest
 
 	if err := json.Read(r,&params); err != nil {
 		log.Println(err)
-		json.InvalidRequest(w,err)		
+		json.InvalidRequest(w,err,nil)		
+		return
 	}
 
 	user,err := h.service.CreateUser(r.Context(),params)
 
 	if err != nil {
 		log.Println(err)
-		json.InternalServerError(w,err)
+		json.InternalServerError(w,err,nil)
+		return
 	}
 
 	json.Write(w,http.StatusCreated,user);
@@ -43,15 +45,37 @@ func (h *handler) GetUserByID(w http.ResponseWriter,r *http.Request) {
 
 	if err := userID.Scan(id); err != nil {
 			log.Println(err)
-			json.InvalidRequest(w,err)
+			json.InvalidRequest(w,err,nil)
+			return
 	}
 
 	user, err := h.service.GetUserByID(r.Context(),userID)
 	
 	if err != nil {
 		log.Println(err)
-		json.InternalServerError(w,err)
+		json.InternalServerError(w,err,nil)
+		return
 	}
 
 	json.Write(w,http.StatusOK,user)
+}
+
+func (h *handler) Login (w http.ResponseWriter,r *http.Request) {
+ 	var params LoginUserRequest
+
+	if err := json.Read(r,&params);  err != nil {
+		log.Println(err)
+		json.InvalidRequest(w,err,nil)
+		return
+	}
+
+	res, err := h.service.GetUserByEmail(r.Context(),params)
+
+	if err != nil {
+		log.Println(err)
+		json.InternalServerError(w,err,nil)
+		return
+	}
+
+	json.Write(w,http.StatusOK,res)
 }

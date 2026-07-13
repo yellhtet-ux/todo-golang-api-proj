@@ -33,7 +33,6 @@ type Todo struct {
 }
 
 type CreateTodoRequest struct {
-	UserID      pgtype.UUID  `json:"user_id"`
 	Title       string       `json:"title"`
 	Description pgtype.Text  `json:"description"`
 	DueDate     time.Time    `json:"due_date"`
@@ -43,7 +42,6 @@ type CreateTodoRequest struct {
 
 // CreateTodoRequestDoc documents the create todo request body for Swagger.
 type CreateTodoRequestDoc struct {
-	UserID      pgtype.UUID  `json:"user_id"`
 	Title       string       `json:"title" example:"Buy groceries"`
 	Description string       `json:"description" example:"Milk and eggs"`
 	DueDate     time.Time    `json:"due_date"`
@@ -72,13 +70,13 @@ type TodoResponse struct {
 	UpdatedAt   time.Time    `json:"updated_at"`
 }
 
-
-// ListToDoByIDParam... 
-type ListToDosByIDParam struct {
-	ID     pgtype.UUID `json:"id"`
-	UserID pgtype.UUID `json:"user_id"`
+type UpdateToDoStatusRequest struct {
+	Status TodoStatus  `json:"status"`
 }
 
+type UpdateToDoPriorityRequest struct {
+	Priority TodoPriority  `json:"priority"`
+}
 // ErrorResponse represents an error response body.
 type ErrorResponse struct {
 	Message string `json:"message" example:"Invalid request"`

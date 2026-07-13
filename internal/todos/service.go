@@ -2,7 +2,6 @@ package todos
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -11,23 +10,24 @@ import (
 
 var (
 	TodoNotFoundError = "todo not found"
-	InvalidIDError = "Invalid IDs"
+	InvalidToDoIDError = "todo id is not valid"
+	InvalidUserIDError = "user id is not valid"
 )
 
 type Service interface {
 	// GET
 	ListToDos(ctx context.Context,userID pgtype.UUID) ([]repo.Todo,error) 
-	ListToDosByID(ctx context.Context, params ListToDosByIDParam) (repo.Todo,error)
+	ListToDosByID(ctx context.Context, todoID pgtype.UUID,userID pgtype.UUID) (repo.Todo,error)
 
 	// POST
-	CreateTodo(ctx context.Context, todo CreateTodoRequest) (repo.Todo,error)
+	CreateTodo(ctx context.Context,userID pgtype.UUID,todo CreateTodoRequest) (repo.Todo,error)
 
 	// PUT
-	UpdateTodoByStatus(ctx context.Context, todo *repo.UpdateToDoStatusParams) (repo.Todo,error)
-	UpdateToDoByPriority(ctx context.Context,todo *repo.UpdateToDoPriorityParams) (repo.Todo,error)
+	UpdateTodoByStatus(ctx context.Context,todoID pgtype.UUID,userID pgtype.UUID,todo UpdateToDoStatusRequest) (repo.Todo,error)
+	UpdateToDoByPriority(ctx context.Context,todoID pgtype.UUID,userID pgtype.UUID,todo UpdateToDoPriorityRequest) (repo.Todo,error)
 
 	// DELETE
-	DeleteTodoByID(ctx context.Context, params repo.DeleteTodoByIDParams) error
+	DeleteTodoByID(ctx context.Context,todoID pgtype.UUID,userID pgtype.UUID) error
 }
 
 type svc struct {
@@ -41,39 +41,22 @@ func NewService (repo repo.Querier) Service {
 	}
 }
 
-func (s *svc) ListToDos(ctx context.Context,userID pgtype.UUID) ([]repo.Todo,error) {
-	// check user id is valid
-	isUserIDValid := userID.Valid
-
-	if isUserIDValid {
-	// check user is already exist
-		if _,err := s.repo.GetUserByID(ctx,userID); err != nil {
-			return []repo.Todo{}, errors.New("user is not existed")
-		}
-	} else {
-		return []repo.Todo{}, errors.New("user id should be valid")
-	} 
-	
-	// check user is already exist
-	if _,err := s.repo.GetUserByID(ctx,userID); err != nil {
-			return []repo.Todo{}, errors.New("user is not existed")
-	}
-	
-	return s.repo.ListToDos(ctx,userID)
+func (s *svc) ListToDos(ctx context.Context, userID pgtype.UUID) ([]repo.Todo,error) {
+	return s.repo.ListToDos(ctx, userID)
 }
 
-func (s *svc) ListToDosByID(ctx context.Context, params ListToDosByIDParam) (repo.Todo,error) {
-	// Check both User and Todo ID are valid
-	isUserIDValid := params.UserID.Valid
-	isToDoIDValid := params.ID.Valid
-	
-	// If yes, query the data from data with UserID and Todo ID
-	if isUserIDValid && isToDoIDValid {
-		listTodoParam := repo.ListToDosByIDParams {
-			ID: params.ID,
-			UserID: params.UserID,
-		}
-		todo, err := s.repo.ListToDosByID(ctx,listTodoParam)
+func (s *svc) ListToDosByID(ctx context.Context,todoID pgtype.UUID,userID pgtype.UUID) (repo.Todo,error) {
+	isUserIDValid := userID.Valid
+	isToDoIDValid := todoID.Valid
+
+	if isUserIDValid {
+		if isToDoIDValid {
+			params := repo.ListToDosByIDParams{
+				ID: todoID,
+				UserID: userID,
+			}
+		// If yes, query the data from data with UserID and Todo ID
+			todo, err := s.repo.ListToDosByID(ctx,params)
 
 		// If something went wrong, Not found error would be appeared.
 		if err != nil {
@@ -82,44 +65,109 @@ func (s *svc) ListToDosByID(ctx context.Context, params ListToDosByIDParam) (rep
 		// Unless Got the DATA Yayyyy
 			return todo, nil
 		}
+		}else {
+			return repo.Todo{}, fmt.Errorf("invalid todo id %s", InvalidToDoIDError)
+		}
 	}else {
-		// Unless Invalid ID error would be appeared 
-		return repo.Todo{}, fmt.Errorf("invaild ids: %s", InvalidIDError)
+			return repo.Todo{},fmt.Errorf("invalid user id %s",InvalidUserIDError)
 	}
 }
 
-func (s *svc) CreateTodo(ctx context.Context, todo CreateTodoRequest) (repo.Todo,error) {
-	isUserIDValid := todo.UserID.Valid
+func (s *svc) CreateTodo(ctx context.Context,userID pgtype.UUID,todo CreateTodoRequest) (repo.Todo,error) {
 
-	if isUserIDValid {
-		createTodoParams := repo.CreateToDoParams {
-			UserID: todo.UserID,
+	param := repo.CreateToDoParams{
+		  UserID: userID,
 			Title: todo.Title,
 			Description: todo.Description,
-			Status: repo.TodoStatus(todo.Status),
-			Priority: repo.TodoPriority(todo.Priority),
 			DueAt: pgtype.Timestamptz{Time: todo.DueDate,Valid: true},
+			Priority: repo.TodoPriority(todo.Priority),
+			Status: repo.TodoStatus(todo.Status),	
 		}
 
-		todo, err := s.repo.CreateToDo(ctx,createTodoParams)
-		if err != nil {
-			return repo.Todo{},fmt.Errorf("not found error: %s", TodoNotFoundError)
+		createdTodo, err := s.repo.CreateToDo(ctx,param)
+
+		if err  != nil {
+			return repo.Todo{},fmt.Errorf("error not found %s", TodoNotFoundError)
+		}
+
+		return createdTodo, nil
+
+}
+
+func (s *svc) UpdateTodoByStatus(ctx context.Context,todoID pgtype.UUID,userID pgtype.UUID,todo UpdateToDoStatusRequest) (repo.Todo,error) {
+	isUserIDValid := userID.Valid
+	isToDoIDValid := todoID.Valid
+
+	if isUserIDValid {	
+		if isToDoIDValid {
+			updateTodoBySParams := repo.UpdateToDoStatusParams{
+					ID: todoID,
+					UserID: userID,
+					Status: repo.TodoStatus(todo.Status),
+			}
+			todo, err := s.repo.UpdateToDoStatus(ctx,updateTodoBySParams)
+			if err != nil {
+				return repo.Todo{}, fmt.Errorf("error not found: %s",TodoNotFoundError)
+			}else {
+				return todo, nil
+			}
 		}else {
-			return todo, nil 
+			return repo.Todo{}, fmt.Errorf("invalid todo id: %s", InvalidToDoIDError)
 		}
 	}else {
-		return repo.Todo{},fmt.Errorf("invalid id: %s", InvalidIDError)
+		return repo.Todo{},fmt.Errorf("invalid user id: %s", InvalidUserIDError)
 	}
-}
-
-func (s *svc) UpdateTodoByStatus(ctx context.Context,todo *repo.UpdateToDoStatusParams) (repo.Todo,error) {
-	return s.repo.UpdateToDoStatus(ctx,*todo)
 } 
 
-func (s *svc) UpdateToDoByPriority(ctx context.Context,todo *repo.UpdateToDoPriorityParams) (repo.Todo,error) {
-	return s.repo.UpdateToDoPriority(ctx,*todo)
+func (s *svc) UpdateToDoByPriority(ctx context.Context,todoID pgtype.UUID,userID pgtype.UUID,todo UpdateToDoPriorityRequest) (repo.Todo,error) {
+
+	isUserIDValid := userID.Valid
+	isToDoIDValid := todoID.Valid
+
+	if isUserIDValid {
+		if isToDoIDValid {
+						updateTodoPParams := repo.UpdateToDoPriorityParams{
+							UserID: userID,
+							ID: todoID,
+							Priority: repo.TodoPriority(todo.Priority),
+					}
+					updatedTodo, err := s.repo.UpdateToDoPriority(ctx,updateTodoPParams)
+						
+					if err != nil {
+						return repo.Todo{}, fmt.Errorf("not found error: %s",err)
+					}else {
+						return updatedTodo, nil
+					}
+			}else {
+					return repo.Todo{}, fmt.Errorf("invalid todo id: %s", InvalidToDoIDError)
+				}
+			}else {
+					return repo.Todo{},fmt.Errorf("invalid user id: %s",InvalidUserIDError)
+			}
 }
 
-func (s *svc) DeleteTodoByID(ctx context.Context, params repo.DeleteTodoByIDParams) error {
-	return s.repo.DeleteTodoByID(ctx,params)
+func (s *svc) DeleteTodoByID(ctx context.Context,todoID pgtype.UUID,userID pgtype.UUID) error {
+	// Check IDs are valid 
+	isUserIDValid := userID.Valid
+	isToDoIDValid := todoID.Valid
+
+	if isUserIDValid {
+		if isToDoIDValid {
+			deleteTodoByIDParam := repo.DeleteTodoByIDParams {
+				UserID: userID,
+				ID: todoID,
+			}
+
+			err := s.repo.DeleteTodoByID(ctx,deleteTodoByIDParam)
+			if err != nil {
+				return fmt.Errorf("error not found: %s",TodoNotFoundError)
+			}else {
+				return nil
+			}
+		}else {	
+			return fmt.Errorf("invalid user id: %s",InvalidToDoIDError)
+		}
+	}else {
+		return fmt.Errorf("invalid user id: %s",InvalidUserIDError)
+	}
 }

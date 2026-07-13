@@ -12,9 +12,9 @@ import (
 	"github.com/swaggo/http-swagger"
 
 	repo "github.com/yellhtet-ux/todo-golang-api-proj/internal/adapters/postgresql/sqlc"
+	user_middleware "github.com/yellhtet-ux/todo-golang-api-proj/internal/middleware"
 	"github.com/yellhtet-ux/todo-golang-api-proj/internal/todos"
 	"github.com/yellhtet-ux/todo-golang-api-proj/internal/user"
-
 )
 
 
@@ -42,30 +42,36 @@ func (app *application) mount () http.Handler {
 	userService := user.NewService(userRepo,app.db)
 	userHandler := user.NewHandler(userService)
 
-	r.Post("/v1/user/signup",userHandler.CreateUser)
-	r.Get("/v1/user/{userid}",userHandler.GetUserByID)
 
+	r.Post("/v1/user/login", userHandler.Login)
+  r.Post("/v1/user/signup",userHandler.CreateUser)
 
 	// Todos Related Routes
 	todoRepo := repo.New(app.db)
 	todoService := todos.NewService(todoRepo)
 	todoHandler := todos.NewHandler(todoService)
 
-	// GET /todos
-	r.Get("/v1/todos/{userid}", todoHandler.ListTodos)
-	r.Get("/v1/todo/", todoHandler.ListToDosByID)
+	r.Group(func(protected chi.Router) {
+    protected.Use(user_middleware.JWTMiddleware)
+ 		
+		// User
+		protected.Get("/v1/user/{userid}",userHandler.GetUserByID)
 
-	// POST /todo/create
-	r.Post("/v1/todo/create", todoHandler.CreateTodo)
+		// GET /todos
+		protected.Get("/v1/todos/", todoHandler.ListTodos)
+		protected.Get("/v1/todo/{todo_id}", todoHandler.ListToDosByID)
+		
+		// POST /todo/create
+		protected.Post("/v1/todo/create", todoHandler.CreateTodo)
 
-	// PUT /todo/update/status/{id}
-	r.Put("/v1/todo/update/status/{id}", todoHandler.UpdateTodoByStatus)
-	// PUT /todo/update/priority/{id}
-	r.Put("/v1/todo/update/priority/{id}", todoHandler.UpdateToDoByPriority)
+		// PUT /todo/update/status/{id}
+		protected.Put("/v1/todo/update/status/{todo_id}", todoHandler.UpdateTodoByStatus)
+		// PUT /todo/update/priority/{id}
+		protected.Put("/v1/todo/update/priority/{todo_id}", todoHandler.UpdateToDoByPriority)
 
-	// DELETE /todo/delete/{id}
-	r.Delete("/v1/todo/delete/{id}", todoHandler.DeleteTodoByID)
-	
+		// DELETE /todo/delete/{id}
+		protected.Delete("/v1/todo/delete/{todo_id}", todoHandler.DeleteTodoByID)
+})
 	return r;
 }
 
