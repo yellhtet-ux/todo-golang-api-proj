@@ -17,40 +17,42 @@ import (
 // @description     A REST API for managing todos.
 // @host            localhost:1323
 // @BasePath        /
-func main () {
+func main() {
 
 	ctx := context.Background()
+	port := env.GetString("PORT", "1323")
 
 	// Config
-	cfg := config {
-		addr: ":1323",
+	dsn := env.GetString("DATABASE_URL", env.GetString("GOOSE_DBSTRING", "host=localhost user=postgres password=postgres dbname=todos sslmode=disable"))
+	cfg := config{
+		addr: ":" + port,
 		db: dbConfig{
-		dsn: env.GetString("GOOSE_DBSTRING","host=localhost user=postgres password=postgres dbname=todos sslmode=disable"),
+			dsn: dsn,
 		},
 	}
 
 	// Logger
-	logger := slog.New(slog.NewTextHandler(os.Stdout,nil))
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
 	// Database
 	conn, err := pgxpool.New(ctx, cfg.db.dsn)
 	if err != nil {
-		panic(err)		
+		panic(err)
 	}
 	defer conn.Close()
 
-	logger.Info("connected to database","dsn",cfg.db.dsn)
+	logger.Info("connected to database", "dsn", cfg.db.dsn)
 
 	// Application
-	api := application {
-	config: cfg,
-	db: conn,
+	api := application{
+		config: cfg,
+		db:     conn,
 	}
 
 	// Run the server
 	if err := api.run(api.mount()); err != nil {
-		log.Printf("Server is failed to start, err %s",err)
+		log.Printf("Server is failed to start, err %s", err)
 		os.Exit(1)
 	}
 }
